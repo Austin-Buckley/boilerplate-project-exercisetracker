@@ -59,32 +59,37 @@ app.post("/api/users", async (req, res) => {
 app.post("/api/users/:_id/exercises", async (req, res) => {
   const id = req.params._id;
   const { description, duration, date } = req.body;
-req.body.date ? (req.body.date += "T00:00:00") : undefined; 
 
   try {
     const user = await User.findById(id);
     if (!user) {
-      res.send("Could not find user");
-      return;
+      return res.status(404).send("Could not find user");
     }
-    
+
+    // Ensure the date is in the correct format
+    const exerciseDate = date ? new Date(date + "T00:00:00") : new Date();
+
     const exerciseObj = new Exercise({
       user_id: user._id,
       description,
       duration,
-      date: date ? new Date(date) : new Date(),
+      date: exerciseDate,
     });
+
     const exercise = await exerciseObj.save();
-    res.json({
+    const response = {
+      _id: user._id,
       username: user.username,
       description: exercise.description,
       duration: exercise.duration,
       date: exercise.date.toDateString(),
-      _id: user._id,
-    });
+    };
+
+    console.log(response); // Log the response to verify its content
+    res.json(response);
   } catch (err) {
     console.log(err);
-    res.send("There was an error saving the exercise");
+    res.status(500).send("There was an error saving the exercise");
   }
 });
 
