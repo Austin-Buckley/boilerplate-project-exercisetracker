@@ -22,6 +22,7 @@ const Exercise = mongoose.model("Exercise", ExerciseSchema);
 
 app.use(cors());
 app.use(express.static("public"));
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/views/index.html");
@@ -53,12 +54,11 @@ app.post("/api/users", async (req, res) => {
 
 app.post("/api/users/:_id/exercises", async (req, res) => {
   const id = req.params._id;
-  const { description, duration, date } = req.body;
-
+  const { description, duration, date} = req.body;
   try {
     const user = await User.findById(id);
     if (!user) {
-      res.send("Could not find user");
+      res.status(404).send("Could not find user");
     } else {
       const exerciseObj = new Exercise({
         user_id: user._id,
@@ -72,12 +72,12 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
         username: user.username,
         description: exercise.description,
         duration: exercise.duration,
-        date: exercise.date.toDateString(), // Make sure date is a string
+        date: exercise.date.toDateString(), // Ensure date is a string
       });
     }
   } catch (err) {
     console.log(err);
-    res.send("There was an error saving the exercise");
+    res.status(500).send("There was an error saving the exercise");
   }
 });
 
@@ -86,7 +86,7 @@ app.get("/api/users/:_id/logs", async (req, res) => {
   const id = req.params._id;
   const user = await User.findById(id);
   if (!user) {
-    res.send("Could not find user");
+    res.status(404).send("Could not find user");
     return;
   }
   let dateObj = {};
@@ -103,7 +103,7 @@ app.get("/api/users/:_id/logs", async (req, res) => {
     filter.date = dateObj;
   }
 
-  const exercises = await Exercise.find(filter).limit(+limit ?? 500);
+  const exercises = await Exercise.find(filter).limit(+limit || 500);
 
   const log = exercises.map((e) => ({
     description: e.description,
