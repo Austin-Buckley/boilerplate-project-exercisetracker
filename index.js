@@ -5,7 +5,10 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-mongoose.connect(process.env.DB_URL);
+mongoose.connect(process.env.DB_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
 const UserSchema = new Schema({
   username: String,
@@ -38,15 +41,16 @@ app.get("/api/users", async (req, res) => {
 });
 
 app.post("/api/users", async (req, res) => {
-  console.log(req.body);
   const userObj = new User({
     username: req.body.username,
   });
 
   try {
     const user = await userObj.save();
-    console.log(user);
-    res.json(user);
+    res.json({
+      username: user.username,
+      _id: user._id,
+    });
   } catch (err) {
     console.log(err);
   }
@@ -54,30 +58,33 @@ app.post("/api/users", async (req, res) => {
 
 app.post("/api/users/:_id/exercises", async (req, res) => {
   const id = req.params._id;
-  const { description, duration, date} = req.body;
+  const { description, duration, date } = req.body;
+req.body.date ? (req.body.date += "T00:00:00") : undefined; 
+
   try {
     const user = await User.findById(id);
     if (!user) {
-      res.status(404).send("Could not find user");
-    } else {
-      const exerciseObj = new Exercise({
-        user_id: user._id,
-        description,
-        duration,
-        date: date ? new Date(date) : new Date(),
-      });
-      const exercise = await exerciseObj.save();
-      res.json({
-        _id: user._id,
-        username: user.username,
-        description: exercise.description,
-        duration: exercise.duration,
-        date: exercise.date.toDateString(), // Ensure date is a string
-      });
+      res.send("Could not find user");
+      return;
     }
+    
+    const exerciseObj = new Exercise({
+      user_id: user._id,
+      description,
+      duration,
+      date: date ? new Date(date) : new Date(),
+    });
+    const exercise = await exerciseObj.save();
+    res.json({
+      username: user.username,
+      description: exercise.description,
+      duration: exercise.duration,
+      date: exercise.date.toDateString(),
+      _id: user._id,
+    });
   } catch (err) {
     console.log(err);
-    res.status(500).send("There was an error saving the exercise");
+    res.send("There was an error saving the exercise");
   }
 });
 
@@ -108,7 +115,7 @@ app.get("/api/users/:_id/logs", async (req, res) => {
   const log = exercises.map((e) => ({
     description: e.description,
     duration: e.duration,
-    date: e.date.toDateString(), // Ensure date is a string in the log array
+    date: e.date.toDateString(),
   }));
 
   res.json({
